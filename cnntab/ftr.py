@@ -30,16 +30,15 @@ class FTR(BaseModel):
         df = df[["EmpNo_Anon", "Work_DateTime", "incident"]]
         df["Work_DateTime"] = pd.to_datetime(df["Work_DateTime"])
 
-        # sort values by "Employee" & "Work_DateTime"
-        df.sort_values(by=["EmpNo_Anon", "Work_DateTime"], inplace=True)
         self.data = df
         return self
 
-    def get_employee_record(self):
+    def get_employee_record(self, sample: bool = True):
         self.employee_records = pd.DataFrame()
         for master_idx, df in tqdm(self.data.groupby("EmpNo_Anon")):
-            if random.random() > 0.01:
-                continue
+            if sample == True:
+                if random.random() > 0.01:
+                    continue
             new_df = pd.DataFrame(
                 False,
                 index=pd.date_range(
@@ -63,6 +62,6 @@ if __name__ == "__main__":
     x = (
         FTR(file_path="data/public.csv")
         .load_data()
-        .get_employee_record()
+        .get_employee_record(sample=False)
         .employee_records.to_csv("data/final.csv")
     )
