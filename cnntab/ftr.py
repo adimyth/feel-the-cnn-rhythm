@@ -2,12 +2,89 @@ import gc
 from datetime import date, timedelta
 from pathlib import Path
 from typing import List, Union, Optional
-
+import datetime as dt
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 from tqdm import tqdm
 import random
+from heatmap import Heatmap
+import matplotlib.pyplot as plt
+
+
+def extract_one_worker(file_path: Union[str, Path], offset: int = 0):
+    if Path(file_path).exists():
+        data = pd.read_csv(str(file_path))
+        data.timestamp = pd.to_datetime(data.timestamp)
+    else:
+        raise ValueError(f"FTR data at path {file_path} doesn't exist!")
+    for idx, grp in enumerate(data.groupby("worker")):
+        if idx == offset:
+            return grp[1]
+    raise ValueError(f"Incorrect offset requested: {offset}. Max possible: {idx}")
+
+
+def df_to_heatmap(
+    data: pd.DataFrame,
+    idx: int = None,
+    min_offset: int = 120,
+    offset: int = 0,
+):
+    if idx is None:
+        diag = data.iloc[min_offset:, :]
+        idx = diag[diag.worked == True].index[offset]
+    label = data.iloc[idx, :].incident
+    timestamp = data.iloc[idx, :].timestamp
+    diag = data.iloc[idx - 120 : idx, :]
+    subset = diag.worked.values.reshape((5, 24))
+    return (subset, label, timestamp, diag)
+
+
+def df_to_heatmap_v2(data: pd.DataFrame, min_offset: int = 120, offset: int = 0):
+    diag = data.iloc[min_offset:, :]
+    idx = diag[diag.worked == True].index[offset]
+    label = data.iloc[idx, :].incident
+    timestamp = data.iloc[idx, :].timestamp
+
+    start = data.timestamp[idx] - dt.timedelta(days=4)
+    start = pd.Series(start).dt.floor("D").dt.strftime("%Y-%m-%d %H:%M:%S")
+    end = data.timestamp[idx]
+    end = pd.Series(end)
+    # end = pd.Series(end).dt.ceil("D").dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    diag = data[data.timestamp.isin(pd.date_range(start[0], end[0], freq="H"))]
+
+    subset = diag.worked.values
+    subset = np.append(subset, np.repeat(False, 120 - len(subset)))
+    subset = subset.reshape((5, 24))
+    return (subset, label, timestamp, diag)
+
+
+def generate_all_heatmaps(input_path: str, output_path: str = "data/"):
+    if Path(input_path).exists():
+        data = pd.read_csv(str(input_path))
+        data.timestamp = pd.to_datetime(data.timestamp)
+    else:
+        raise ValueError(f"FTR data at path {input_path} doesn't exist!")
+    for idx, df in tqdm(data.groupby("worker")):
+        # if df.shape[0] < 120:
+        #     continue
+        df = df.reset_index(drop=True)
+
+        for idx in tqdm(df[df.worked == True].index):
+            if idx <= 120:
+                continue
+            worker, label, timestamp, diag = df_to_heatmap(df, idx=idx)
+            if label == False:
+                if random.random() > 0.1:
+                    continue
+
+            h = Heatmap(data=worker).create_heatmap()
+            h.savefig(
+                Path(output_path)
+                / f"{int(label)}_{df.worker.unique()[0]}_{timestamp.strftime('%Y_%m_%d_%H_%M_%S')}.png"
+            )
+            plt.close(h)
 
 
 class FTR(BaseModel):
@@ -55,13 +132,20 @@ class FTR(BaseModel):
                 ].incident
             new_df.loc[:, "worker"] = master_idx
             self.employee_records = pd.concat([self.employee_records, new_df])
+
+        self.employee_records.index = self.employee_records.index.set_names("timestamp")
+        self.employee_records.index = pd.to_datetime(self.employee_records.index)
+        self.employee_records = self.employee_records.reset_index(drop=False)
         return self
 
 
 if __name__ == "__main__":
-    x = (
-        FTR(file_path="data/public.csv")
-        .load_data()
-        .get_employee_record(sample=False)
-        .employee_records.to_csv("data/final.csv")
-    )
+    # Generate employee history
+    # x = (
+    #     FTR(file_path="data/public.csv")
+    #     .load_data()
+    #     .get_employee_record(sample=False)
+    #     .employee_records.to_csv("data/final.csv", index=False)
+    # )
+    # Generate heat maps
+    generate_all_heatmaps(input_path="data/final.csv", output_path="data/heatmaps/")
