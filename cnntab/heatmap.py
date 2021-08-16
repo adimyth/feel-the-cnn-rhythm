@@ -1,10 +1,10 @@
-from pydantic import BaseModel
-import pandas as pd
-from pathlib import Path
-from typing import Union, Optional
-import seaborn as sns
-import matplotlib.pyplot as plt
+from typing import Optional, Union
+
+import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
+import pandas as pd  # type: ignore
+import seaborn as sns  # type: ignore
+from pydantic import BaseModel
 
 
 class Heatmap(BaseModel):
@@ -14,9 +14,10 @@ class Heatmap(BaseModel):
         arbitrary_types_allowed = True
 
     def create_heatmap(self):
-        fig, ax1 = plt.subplots(figsize=(10, 5))
-        ax1 = sns.heatmap(
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax = sns.heatmap(
             self.data, linewidths=1, cmap="Greens", linecolor="white", cbar=False
         )
-        plt.axis("off")
+        ax.set_xlabel("# Hours passed")
+        ax.set_ylabel("# Days passed")
         return fig

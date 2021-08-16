@@ -1,4 +1,4 @@
-from cnntab import display_heatmap
-import streamlit as st
+from cnntab import display_heatmap  # type: ignore
 
-display_heatmap("data/final.csv")
+abs_path = "/Users/adimyth/Projects/feel-the-rhythm-resnet101/cnntab/data/interim/final_data_38321907.0.csv"
+display_heatmap(abs_path)
