@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd  # type: ignore
 from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
+tqdm.pandas()
 
 from heatmap import Heatmap
 
@@ -51,10 +52,29 @@ def generate_all_heatmaps(
         plt.close(h)
 
 
+def generate_one_binary_mask(row):
+    # Setup
+    cmap = mpl.colors.ListedColormap(["w", "g"])
+    bounds = [0.0, 0.5, 1.0]
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    plt.xticks(range(0, 24))
+    plt.yticks(range(0, 5))
+    ax.xaxis.grid(True)
+    ax.yaxis.grid(True)
+
+    worker, label, timestamp, data = hour_to_heatmap(row, 120)
+
+    ax.imshow(data, interpolation="none", cmap=cmap, norm=norm)
+    fig.savefig(Path("data/processed") / f"{str(label)}_{str(worker)}_{timestamp}.png")
+    plt.close(fig)
+
+
 def generate_all_binary_masks(
     input_path: str, output_path: str = "data/processed", num_hours: int = 120
 ):
-    # Same as above function except that it uses matplotlib & not seaborn's heatmap
+    # Same as "generate_all_heatmaps" function except that it uses matplotlib & not seaborn's heatmap
     if Path(input_path).exists():
         df = pd.read_csv(str(input_path)).head(1000)
         df["Work_DateTime"] = pd.to_datetime(df["Work_DateTime"]).dt.strftime(
@@ -63,23 +83,7 @@ def generate_all_binary_masks(
     else:
         raise ValueError(f"Data at path {input_path} doesn't exist!")
 
-    # Setup
-    cmap = mpl.colors.ListedColormap(["w", "g"])
-    bounds = [0.0, 0.5, 1.0]
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
-
-    for _, row in tqdm(df.iterrows(), total=len(df)):
-        fig, ax = plt.subplots(figsize=(10, 5))
-        plt.xticks(range(0, 24))
-        plt.yticks(range(0, 5))
-        ax.xaxis.grid(True)
-        ax.yaxis.grid(True)
-
-        worker, label, timestamp, data = hour_to_heatmap(row, num_hours)
-
-        ax.imshow(data, interpolation="none", cmap=cmap, norm=norm)
-        fig.savefig(Path(output_path) / f"{str(label)}_{str(worker)}_{timestamp}.png")
-        plt.close(fig)
+    df.progress_apply(generate_one_binary_mask, axis=1)
 
 
 class FTR(BaseModel):
@@ -127,9 +131,6 @@ class FTR(BaseModel):
         return self
 
     def process_interim(self):
-        """
-        Adds record for whether someone had worked 1<x<120 hours ago
-        """
         # calculate hour difference between consecutive records
         self.data["hour_diff"] = self.data["Work_DateTime"] - self.data[
             "Work_DateTime"
@@ -180,3 +181,9 @@ if __name__ == "__main__":
     #     input_path="data/interim/final_data_38321907.csv", num_hours=num_hours
     # )
     # print(f"V1 Runtime: {time.time()-start} seconds")
+
+    start = time.time()
+    generate_all_binary_masks(
+        input_path="data/interim/final_data_38321907.csv", num_hours=num_hours
+    )
+    print(f"V1 Runtime: {time.time()-start} seconds")
