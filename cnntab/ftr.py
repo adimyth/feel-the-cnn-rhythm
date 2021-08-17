@@ -1,22 +1,23 @@
 import gc
+import time
 from pathlib import Path
 from typing import List, Optional, Union
 
+import matplotlib as mpl  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd  # type: ignore
 from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
-from .heatmap import Heatmap
+from heatmap import Heatmap
 
 
-def hour_to_heatmap(row):
+def hour_to_heatmap(row, num_hours=120):
     worker = row["EmpNo_Anon"]
-    label = row["incident"]
+    label = 1 if row["incident"] == True else 0
     timestamp = row["Work_DateTime"]
-    data = row[[f"worked_hr_{x}" for x in range(1, 121)]].astype(int)
-    print(data.values.reshape(5, 24))
-    data = data.values.reshape((5, 24))
+    data = row[[f"worked_hr_{x}" for x in range(1, num_hours + 1)]].astype(float)
+    data = data.values.reshape((num_hours // 24, 24))
     return worker, label, timestamp, data
 
 
@@ -33,19 +34,52 @@ def extract_one_worker_hour(file_path: Union[str, Path]):
     return worker, label, timestamp, data, diag
 
 
-def generate_all_heatmaps(input_path: str, output_path: str = "data/processed"):
+def generate_all_heatmaps(
+    input_path: str, output_path: str = "data/processed", num_hours: int = 120
+):
     if Path(input_path).exists():
-        df = pd.read_csv(str(input_path))
+        df = pd.read_csv(str(input_path)).head(1000)
         df["Work_DateTime"] = pd.to_datetime(df["Work_DateTime"]).dt.strftime(
             "%Y_%m_%d_%H_%M_%S"
         )
     else:
         raise ValueError(f"Data at path {input_path} doesn't exist!")
-    for _, row in tqdm(df.iterrows()):
-        worker, label, timestamp, data = hour_to_heatmap(row)
+    for _, row in tqdm(df.iterrows(), total=len(df)):
+        worker, label, timestamp, data = hour_to_heatmap(row, num_hours)
         h = Heatmap(data=data).create_heatmap()
         h.savefig(Path(output_path) / f"{int(label)}_{worker}_{timestamp}.png")
         plt.close(h)
+
+
+def generate_all_binary_masks(
+    input_path: str, output_path: str = "data/processed", num_hours: int = 120
+):
+    # Same as above function except that it uses matplotlib & not seaborn's heatmap
+    if Path(input_path).exists():
+        df = pd.read_csv(str(input_path)).head(1000)
+        df["Work_DateTime"] = pd.to_datetime(df["Work_DateTime"]).dt.strftime(
+            "%Y_%m_%d_%H_%M_%S"
+        )
+    else:
+        raise ValueError(f"Data at path {input_path} doesn't exist!")
+
+    # Setup
+    cmap = mpl.colors.ListedColormap(["w", "g"])
+    bounds = [0.0, 0.5, 1.0]
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+
+    for _, row in tqdm(df.iterrows(), total=len(df)):
+        fig, ax = plt.subplots(figsize=(10, 5))
+        plt.xticks(range(0, 24))
+        plt.yticks(range(0, 5))
+        ax.xaxis.grid(True)
+        ax.yaxis.grid(True)
+
+        worker, label, timestamp, data = hour_to_heatmap(row, num_hours)
+
+        ax.imshow(data, interpolation="none", cmap=cmap, norm=norm)
+        fig.savefig(Path(output_path) / f"{str(label)}_{str(worker)}_{timestamp}.png")
+        plt.close(fig)
 
 
 class FTR(BaseModel):
@@ -71,7 +105,7 @@ class FTR(BaseModel):
 
     def load_data(self) -> pd.DataFrame:
         if Path(self.file_path).exists():
-            df = pd.read_csv(str(self.file_path))
+            df = pd.read_csv(str(self.file_path), dtype={"EmpNo_Anon": int})
         else:
             raise ValueError(f"FTR data at path {self.file_path} doesn't exist!")
 
@@ -121,7 +155,7 @@ class FTR(BaseModel):
 
     def process_single_employee(self, subset: pd.DataFrame) -> pd.DataFrame:
         for col in self.new_columns:
-            subset[col] = False
+            subset.loc[:, col] = False
 
         subset["final"] = subset[self.columns].values.tolist()
 
@@ -132,12 +166,17 @@ class FTR(BaseModel):
 
         # drop non-required columns to reduce RAM usage
         subset = subset.drop(columns=self.columns)
-        subset = subset.drop(columns=["final"])
+        subset = subset.drop(columns=["hour_diff", "hour_diff_cumsum", "final"])
         return subset
 
 
 if __name__ == "__main__":
-    # ftr = FTR(file_path="data/raw/public.csv", num_hours=120)
+    num_hours = 120
+    # ftr = FTR(file_path="data/raw/public.csv", num_hours=num_hours)
     # ftr.process()
 
-    generate_all_heatmaps("data/interim/final_data_38321907.0.csv")
+    # start = time.time()
+    # generate_all_heatmaps(
+    #     input_path="data/interim/final_data_38321907.csv", num_hours=num_hours
+    # )
+    # print(f"V1 Runtime: {time.time()-start} seconds")
