@@ -10,13 +10,13 @@ from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 tqdm.pandas()
 
-from heatmap import Heatmap
+from .heatmap import Heatmap
 
 
 def hour_to_heatmap(row, num_hours=120):
-    worker = row["EmpNo_Anon"]
-    label = 1 if row["incident"] == True else 0
-    timestamp = row["Work_DateTime"]
+    worker = row["EmpNo_Anon"].tolist()[0]
+    label = 1 if row["incident"].tolist()[0] == True else 0
+    timestamp = row["Work_DateTime"].tolist()[0]
     data = row[[f"worked_hr_{x}" for x in range(1, num_hours + 1)]].astype(float)
     data = data.values.reshape((num_hours // 24, 24))
     return worker, label, timestamp, data
@@ -173,8 +173,11 @@ class FTR(BaseModel):
 
 if __name__ == "__main__":
     num_hours = 120
+
+    # start = time.time()
     # ftr = FTR(file_path="data/raw/public.csv", num_hours=num_hours)
     # ftr.process()
+    # print(f"FTR Step 1 (Execution Time): {time.time()-start} seconds")
 
     # start = time.time()
     # generate_all_heatmaps(
@@ -186,4 +189,4 @@ if __name__ == "__main__":
     generate_all_binary_masks(
         input_path="data/interim/final_data_38321907.csv", num_hours=num_hours
     )
-    print(f"V1 Runtime: {time.time()-start} seconds")
+    print(f"Heatmap Generation Runtime: {time.time()-start} seconds")
