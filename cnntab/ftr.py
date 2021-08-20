@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd  # type: ignore
 from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
+
 tqdm.pandas()
 
 from .heatmap import Heatmap
