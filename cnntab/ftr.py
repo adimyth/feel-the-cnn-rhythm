@@ -1,10 +1,9 @@
 import datetime as dt
 import gc
 import random
-from datetime import date, timedelta
 from multiprocessing import Pool
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -35,7 +34,7 @@ def df_to_heatmap(
 ):
     if idx is None:
         diag = data.iloc[min_offset:, :]
-        idx = diag[diag.worked == True].index[offset]
+        idx = diag[diag.worked].index[offset]
     label = data.iloc[idx, :].incident
     timestamp = data.iloc[idx, :].timestamp
     diag = data.iloc[idx - 120 : idx, :]
@@ -45,7 +44,7 @@ def df_to_heatmap(
 
 def df_to_heatmap_v2(data: pd.DataFrame, min_offset: int = 120, offset: int = 0):
     diag = data.iloc[min_offset:, :]
-    idx = diag[diag.worked == True].index[offset]
+    idx = diag[diag.worked].index[offset]
     label = data.iloc[idx, :].incident
     timestamp = data.iloc[idx, :].timestamp
 
@@ -83,11 +82,11 @@ def generate_parallel_heatmaps(df):
     df = df[1]
     df = df.reset_index(drop=True)
 
-    for idx in df[df.worked == True].index:
+    for idx in df[df.worked].index:
         if idx <= 120:
             continue
         subset, label, timestamp, diag = df_to_heatmap(df, idx=idx)
-        if label == False:
+        if not label:
             if random.random() > 0.1:
                 continue
 
@@ -131,7 +130,7 @@ class FTR(BaseModel):
             raise ValueError(f"FTR data at path {self.file_path} doesn't exist!")
 
         # considering only employees which have faced an incident
-        emps = df.loc[df["incident"] == True]["EmpNo_Anon"].tolist()
+        emps = df.loc[df["incident"]]["EmpNo_Anon"].tolist()
         df = df.loc[df["EmpNo_Anon"].isin(emps)]
         df = df[["EmpNo_Anon", "Work_DateTime", "incident"]]
         df["Work_DateTime"] = pd.to_datetime(df["Work_DateTime"])
@@ -142,7 +141,7 @@ class FTR(BaseModel):
     def get_employee_record(self, sample: bool = True):
         self.employee_records = pd.DataFrame()
         for master_idx, df in tqdm(self.data.groupby("EmpNo_Anon")):
-            if sample == True:
+            if sample:
                 if random.random() > 0.01:
                     continue
             new_df = pd.DataFrame(

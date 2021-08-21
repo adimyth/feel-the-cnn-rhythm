@@ -1,6 +1,7 @@
 import streamlit as st
-from ftr import FTR, df_to_heatmap, df_to_heatmap_v2, extract_one_worker
-from heatmap import Heatmap
+
+from .ftr import FTR, df_to_heatmap, df_to_heatmap_v2, extract_one_worker
+from .heatmap import Heatmap
 
 
 def display_heatmap(file_path: str):

@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Optional, Union
 
 import matplotlib.pyplot as plt
@@ -15,8 +14,8 @@ class Heatmap(BaseModel):
         arbitrary_types_allowed = True
 
     def create_heatmap(self):
-        fig, ax1 = plt.subplots(figsize=(10, 5))
-        ax1 = sns.heatmap(
+        fig, _ = plt.subplots(figsize=(10, 5))
+        _ = sns.heatmap(
             self.data, linewidths=1, cmap="Greens", linecolor="white", cbar=False
         )
         plt.axis("off")
