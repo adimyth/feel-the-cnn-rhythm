@@ -1,16 +1,18 @@
-import gc
-from datetime import date, timedelta
-from pathlib import Path
-from typing import List, Union, Optional
 import datetime as dt
+import gc
+import random
+from datetime import date, timedelta
+from multiprocessing import Pool
+from pathlib import Path
+from typing import List, Optional, Union
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from heatmap import Heatmap
 from pydantic import BaseModel
 from tqdm import tqdm
-import random
-from heatmap import Heatmap
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 
 
 def extract_one_worker(file_path: Union[str, Path], offset: int = 0):
@@ -77,31 +79,41 @@ def generate_one_binary_mask(subset):
     return fig
 
 
-def generate_all_heatmaps(input_path: str, output_path: str = "data/"):
+def generate_parallel_heatmaps(df):
+    df = df[1]
+    df = df.reset_index(drop=True)
+
+    for idx in df[df.worked == True].index:
+        if idx <= 120:
+            continue
+        subset, label, timestamp, diag = df_to_heatmap(df, idx=idx)
+        if label == False:
+            if random.random() > 0.1:
+                continue
+
+        h = generate_one_binary_mask(subset)
+        h.savefig(
+            Path("data/heatmaps")
+            / f"{int(label)}_{df.worker.unique()[0]}_{timestamp.strftime('%Y_%m_%d_%H_%M_%S')}.png"
+        )
+        plt.close(h)
+
+
+def generate_all_heatmaps(input_path: str):
     if Path(input_path).exists():
         data = pd.read_csv(str(input_path))
         data.timestamp = pd.to_datetime(data.timestamp)
     else:
         raise ValueError(f"FTR data at path {input_path} doesn't exist!")
-    for idx, df in tqdm(data.groupby("worker")):
-        # if df.shape[0] < 120:
-        #     continue
-        df = df.reset_index(drop=True)
 
-        for idx in df[df.worked == True].index:
-            if idx <= 120:
-                continue
-            subset, label, timestamp, diag = df_to_heatmap(df, idx=idx)
-            if label == False:
-                if random.random() > 0.1:
-                    continue
-
-            h = generate_one_binary_mask(subset)
-            h.savefig(
-                Path(output_path)
-                / f"{int(label)}_{df.worker.unique()[0]}_{timestamp.strftime('%Y_%m_%d_%H_%M_%S')}.png"
-            )
-            plt.close(h)
+    pool = Pool()
+    for _ in tqdm(
+        pool.imap_unordered(generate_parallel_heatmaps, data.groupby("worker")),
+        total=data.worker.nunique(),
+    ):
+        pass
+    pool.close()
+    pool.join()
 
 
 class FTR(BaseModel):
@@ -165,4 +177,4 @@ if __name__ == "__main__":
     #     .employee_records.to_csv("data/final.csv", index=False)
     # )
     # Generate heat maps
-    generate_all_heatmaps(input_path="data/final.csv", output_path="data/heatmaps/")
+    generate_all_heatmaps(input_path="data/final.csv")

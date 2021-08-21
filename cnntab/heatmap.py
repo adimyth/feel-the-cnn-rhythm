@@ -1,10 +1,11 @@
-from pydantic import BaseModel
-import pandas as pd
 from pathlib import Path
-from typing import Union, Optional
-import seaborn as sns
+from typing import Optional, Union
+
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
+from pydantic import BaseModel
 
 
 class Heatmap(BaseModel):
