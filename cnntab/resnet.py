@@ -1,8 +1,8 @@
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-import torchvision.models as models
-import wandb
+import torchvision.models as models  # type:ignore
+import wandb  # type:ignore
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
@@ -10,8 +10,8 @@ from pytorch_lightning.metrics.functional import accuracy
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
-from torchvision.datasets import ImageFolder
-from torchvision.ops import sigmoid_focal_loss
+from torchvision.datasets import ImageFolder  # type:ignore
+from torchvision.ops import sigmoid_focal_loss  # type:ignore
 
 wandb.login()
 
@@ -40,9 +40,7 @@ class FTRDataModule(pl.LightningDataModule):
         num_test = int(0.1 * len(ftr_dataset))
 
         # split dataset
-        self.train, self.val, self.test = random_split(
-            ftr_dataset, [num_train, num_valid, num_test]
-        )
+        self.train, self.val, self.test = random_split(ftr_dataset, [num_train, num_valid, num_test])
         self.train.dataset.transform = self.transform
         self.val.dataset.transform = self.transform
         self.test.dataset.transform = self.transform
@@ -157,9 +155,7 @@ if __name__ == "__main__":
 
     wandb_logger = WandbLogger(project="ftr-lightning", job_type="train")
 
-    early_stop_callback = EarlyStopping(
-        monitor="val_loss", patience=3, verbose=False, mode="min"
-    )
+    early_stop_callback = EarlyStopping(monitor="val_loss", patience=3, verbose=False, mode="min")
 
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",

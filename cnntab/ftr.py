@@ -5,13 +5,13 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Optional, Union
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+import matplotlib as mpl  # type:ignore
+import matplotlib.pyplot as plt  # type:ignore
 import numpy as np
-import pandas as pd
-from heatmap import Heatmap
+import pandas as pd  # type:ignore
+from heatmap import Heatmap  # type:ignore
 from pydantic import BaseModel
-from tqdm import tqdm
+from tqdm import tqdm  # type:ignore
 
 
 def extract_one_worker(file_path: Union[str, Path], offset: int = 0):
@@ -146,18 +146,14 @@ class FTR(BaseModel):
                     continue
             new_df = pd.DataFrame(
                 False,
-                index=pd.date_range(
-                    df.Work_DateTime.min(), df.Work_DateTime.max(), freq="H"
-                ),
+                index=pd.date_range(df.Work_DateTime.min(), df.Work_DateTime.max(), freq="H"),
                 columns=["worked"],
             )
             new_df.loc[:, "incident"] = False
             df = df.reset_index(drop=True)
             for idx, item in df.iterrows():
                 new_df.loc[df.iloc[idx].Work_DateTime, "worked"] = True
-                new_df.loc[df.iloc[idx].Work_DateTime, "incident"] = df.iloc[
-                    idx
-                ].incident
+                new_df.loc[df.iloc[idx].Work_DateTime, "incident"] = df.iloc[idx].incident
             new_df.loc[:, "worker"] = master_idx
             self.employee_records = pd.concat([self.employee_records, new_df])
 
