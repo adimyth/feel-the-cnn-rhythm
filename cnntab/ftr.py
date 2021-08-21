@@ -10,6 +10,7 @@ from tqdm import tqdm
 import random
 from heatmap import Heatmap
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 
 def extract_one_worker(file_path: Union[str, Path], offset: int = 0):
@@ -60,6 +61,22 @@ def df_to_heatmap_v2(data: pd.DataFrame, min_offset: int = 120, offset: int = 0)
     return (subset, label, timestamp, diag)
 
 
+def generate_one_binary_mask(subset):
+    # Setup
+    cmap = mpl.colors.ListedColormap(["w", "g"])
+    bounds = [0.0, 0.5, 1.0]
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    plt.xticks(range(0, 24))
+    plt.yticks(range(0, 5))
+    ax.xaxis.grid(True)
+    ax.yaxis.grid(True)
+
+    ax.imshow(subset, interpolation="none", cmap=cmap, norm=norm)
+    return fig
+
+
 def generate_all_heatmaps(input_path: str, output_path: str = "data/"):
     if Path(input_path).exists():
         data = pd.read_csv(str(input_path))
@@ -71,15 +88,15 @@ def generate_all_heatmaps(input_path: str, output_path: str = "data/"):
         #     continue
         df = df.reset_index(drop=True)
 
-        for idx in tqdm(df[df.worked == True].index):
+        for idx in df[df.worked == True].index:
             if idx <= 120:
                 continue
-            worker, label, timestamp, diag = df_to_heatmap(df, idx=idx)
+            subset, label, timestamp, diag = df_to_heatmap(df, idx=idx)
             if label == False:
                 if random.random() > 0.1:
                     continue
 
-            h = Heatmap(data=worker).create_heatmap()
+            h = generate_one_binary_mask(subset)
             h.savefig(
                 Path(output_path)
                 / f"{int(label)}_{df.worker.unique()[0]}_{timestamp.strftime('%Y_%m_%d_%H_%M_%S')}.png"
