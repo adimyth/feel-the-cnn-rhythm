@@ -5,7 +5,7 @@ description = "Functions to train CNNs on tabular data"
 authors = ["adimyth <mishraaditya6991@gmail.com>", "sharad30 <sharad30.ss@gmail.com>", "soumendra <soumendra@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 pydantic = "^1.8.2"
 pandas = "1.2.5"
 numpy = "^1.21.1"
@@ -15,12 +15,9 @@ streamlit = "^0.86.0"
 tqdm = "^4.62.1"
 pre-commit = "^2.14.0"
 data-science-types = "^0.2.23"
-torch = "^1.9.0"
-torchvision = "^0.10.0"
-pytorch-lightning = "^1.4.2"
-lightning-flash = "^0.4.0"
 loguru = "^0.5.3"
 wandb = "^0.12.0"
+
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.2"

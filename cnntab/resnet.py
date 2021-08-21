@@ -13,8 +13,6 @@ from torchvision import transforms
 from torchvision.datasets import ImageFolder  # type:ignore
 from torchvision.ops import sigmoid_focal_loss  # type:ignore
 
-wandb.login()
-
 
 class FTRDataModule(pl.LightningDataModule):
     def __init__(self, batch_size: int = 64, data_dir: str = ""):
@@ -37,7 +35,7 @@ class FTRDataModule(pl.LightningDataModule):
 
         num_train = int(0.75 * len(ftr_dataset))
         num_valid = int(0.15 * len(ftr_dataset))
-        num_test = int(0.1 * len(ftr_dataset))
+        num_test = len(ftr_dataset) - num_train - num_valid
 
         # split dataset
         self.train, self.val, self.test = random_split(ftr_dataset, [num_train, num_valid, num_test])
@@ -46,13 +44,13 @@ class FTRDataModule(pl.LightningDataModule):
         self.test.dataset.transform = self.transform
 
     def train_dataloader(self):
-        return DataLoader(self.train, batch_size=self.batch_size, shuffle=True)
+        return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, num_workers=12)
 
     def val_dataloader(self):
-        return DataLoader(self.val, batch_size=self.batch_size)
+        return DataLoader(self.val, batch_size=self.batch_size, num_workers=12)
 
     def test_dataloader(self):
-        return DataLoader(self.test, batch_size=self.batch_size)
+        return DataLoader(self.test, batch_size=self.batch_size, num_workers=12)
 
 
 class FTRModel(pl.LightningModule):
@@ -150,28 +148,30 @@ class FTRModel(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    datamodule = FTRDataModule(batch_size=64)
+    datamodule = FTRDataModule(batch_size=512, data_dir="v1")
     datamodule.setup()
 
+    # wandb.login()
+    wandb.init(project="feel-the-cnn-rhythm", entity="sharad30")
     wandb_logger = WandbLogger(project="ftr-lightning", job_type="train")
 
     early_stop_callback = EarlyStopping(monitor="val_loss", patience=3, verbose=False, mode="min")
 
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",
+        dirpath="experiments",
         filename="model/model-{epoch:02d}-{val_loss:.2f}",
         save_top_k=3,
         mode="min",
     )
 
-    model = FTRModel((3, 224, 224), 2)
+    model = FTRModel((3, 64, 64), 2)
     trainer = pl.Trainer(
         max_epochs=20,
         progress_bar_refresh_rate=20,
         gpus=1,
         logger=wandb_logger,
-        callbacks=[early_stop_callback],
-        checkpoint_callback=checkpoint_callback,
+        callbacks=[early_stop_callback, checkpoint_callback],
     )
 
     trainer.fit(model, datamodule)
