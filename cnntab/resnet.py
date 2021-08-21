@@ -44,13 +44,13 @@ class FTRDataModule(pl.LightningDataModule):
         self.test.dataset.transform = self.transform
 
     def train_dataloader(self):
-        return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, num_workers=12)
+        return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, num_workers=16)
 
     def val_dataloader(self):
-        return DataLoader(self.val, batch_size=self.batch_size, num_workers=12)
+        return DataLoader(self.val, batch_size=self.batch_size, num_workers=16)
 
     def test_dataloader(self):
-        return DataLoader(self.test, batch_size=self.batch_size, num_workers=12)
+        return DataLoader(self.test, batch_size=self.batch_size, num_workers=16)
 
 
 class FTRModel(pl.LightningModule):
@@ -148,7 +148,7 @@ class FTRModel(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    datamodule = FTRDataModule(batch_size=512, data_dir="v1")
+    datamodule = FTRDataModule(batch_size=1024, data_dir="/data")
     datamodule.setup()
 
     # wandb.login()

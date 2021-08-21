@@ -1,0 +1,76 @@
+version: "3.8"
+services:
+  tensorboard-server:
+    image: tensorboard
+    build:
+      context: ./
+      dockerfile: tensorboard.Dockerfile
+    ports:
+      - ${TENSORBOARD_PORT}:${TENSORBOARD_PORT}
+    volumes:
+      - ${ROOT_DIR}:/jupyter
+    command:
+      [
+        "tensorboard",
+        "--logdir=${TENSORBOARD_DIR}",
+        "--port=${TENSORBOARD_PORT}",
+        "--bind_all",
+      ]
+
+  pytorch-server:
+    image: pytorch
+    init: true
+    build:
+      context: ./
+      dockerfile: pytorch.Dockerfile
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    env_file: ./.env
+    ports:
+      - ${JUPYTER_PORT_PYTORCH}:${JUPYTER_PORT_PYTORCH}
+    volumes:
+      - ${ROOT_DIR}:/jupyter
+      - ${DATA_DIR}:/data
+    ipc: "host"
+    command:
+      [
+        "jupyter",
+        "notebook",
+        "--ip=*",
+        "--port=${JUPYTER_PORT_PYTORCH}",
+        "--allow-root",
+        "--notebook-dir=${JUPYTER_DIR}",
+        "--NotebookApp.token=${JUPYTER_TOKEN}",
+      ]
+
+  tensorflow-server:
+    image: tensorflow
+    init: true
+    build:
+      context: ./
+      dockerfile: tensorflow.Dockerfile
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    env_file: ./.env
+    ports:
+      - ${JUPYTER_PORT_TF}:${JUPYTER_PORT_TF}
+    volumes:
+      - ${ROOT_DIR}:/jupyter
+      - ${DATA_DIR}:/data
+    ipc: "host"
+    command:
+      [
+        "jupyter",
+        "notebook",
+        "--ip=*",
+        "--port=${JUPYTER_PORT_TF}",
+        "--allow-root",
+        "--notebook-dir=${JUPYTER_DIR}",
+        "--NotebookApp.token=${JUPYTER_TOKEN}",
+      ]
