@@ -1,3 +1,15 @@
 {
-    "python.formatting.provider": "black"
+    "python.pythonPath": ".venv/bin/python",
+    "python.formatting.provider": "black",
+    "editor.formatOnSave": true,
+    "python.formatting.blackArgs": ["--line-length", "120"],
+    "python.linting.enabled": true,
+    "python.linting.lintOnSave": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": ["--ignore=E501,E203,DUO102,PD011,F401,F403,F405,W503,E231,VNE001", "--verbose"],
+    "python.linting.mypyArgs": [],
+    "python.linting.mypyEnabled": true,
+    "python.linting.ignorePatterns": [".vscode/*.py", "**/site-packages/**/*.py"],
+    "python.testing.pytestEnabled": true,
+    "python.testing.autoTestDiscoverOnSaveEnabled": true
 }
