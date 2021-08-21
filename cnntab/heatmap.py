@@ -1,8 +1,8 @@
 from typing import Optional, Union
 
-import matplotlib.pyplot as plt  # type:ignore
-import numpy as np  # type:ignore
-import pandas as pd  # type:ignore
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns  # type:ignore
 from pydantic import BaseModel
 

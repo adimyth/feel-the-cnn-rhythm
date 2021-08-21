@@ -5,10 +5,10 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Optional, Union
 
-import matplotlib as mpl  # type:ignore
-import matplotlib.pyplot as plt  # type:ignore
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd  # type:ignore
+import pandas as pd
 from heatmap import Heatmap  # type:ignore
 from pydantic import BaseModel
 from tqdm import tqdm  # type:ignore
@@ -17,7 +17,7 @@ from tqdm import tqdm  # type:ignore
 def extract_one_worker(file_path: Union[str, Path], offset: int = 0):
     if Path(file_path).exists():
         data = pd.read_csv(str(file_path))
-        data.timestamp = pd.to_datetime(data.timestamp)
+        data.loc[:, "timestamp"] = pd.to_datetime(data.timestamp)
     else:
         raise ValueError(f"FTR data at path {file_path} doesn't exist!")
     for idx, grp in enumerate(data.groupby("worker")):
