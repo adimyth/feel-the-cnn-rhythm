@@ -146,14 +146,18 @@ class FTR(BaseModel):
                     continue
             new_df = pd.DataFrame(
                 False,
-                index=pd.date_range(df.Work_DateTime.min(), df.Work_DateTime.max(), freq="H"),
+                index=pd.date_range(
+                    df.Work_DateTime.min(), df.Work_DateTime.max(), freq="H"
+                ),
                 columns=["worked"],
             )
             new_df.loc[:, "incident"] = False
             df = df.reset_index(drop=True)
             for idx, item in df.iterrows():
                 new_df.loc[df.iloc[idx].Work_DateTime, "worked"] = True
-                new_df.loc[df.iloc[idx].Work_DateTime, "incident"] = df.iloc[idx].incident
+                new_df.loc[df.iloc[idx].Work_DateTime, "incident"] = df.iloc[
+                    idx
+                ].incident
             new_df.loc[:, "worker"] = master_idx
             self.employee_records = pd.concat([self.employee_records, new_df])
 

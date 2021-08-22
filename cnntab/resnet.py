@@ -4,20 +4,52 @@ import torch.nn.functional as F
 import torchvision.models as models  # type:ignore
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.callbacks.finetuning import BaseFinetuning
 from pytorch_lightning.loggers import WandbLogger
 
 # from pytorch_lightning.metrics.functional import accuracy
 from torch import nn
+from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, random_split
+from torchmetrics.functional import accuracy, recall
 from torchvision import transforms
 from torchvision.datasets import ImageFolder  # type:ignore
 from torchvision.ops import sigmoid_focal_loss  # type:ignore
 
-# from torchmetrics.functional.classification.accuracy import accuracy
-
-from torchmetrics.functional import accuracy, recall
-
 import wandb  # type:ignore
+
+
+class MilestonesFinetuning(BaseFinetuning):
+    def __init__(self, milestones: tuple = (5, 10), train_bn: bool = False):
+        super().__init__()
+        self.milestones = milestones
+        self.train_bn = train_bn
+
+    def freeze_before_training(self, pl_module: pl.LightningModule):
+        self.freeze(modules=pl_module.feature_extractor, train_bn=self.train_bn)
+
+    def finetune_function(
+        self,
+        pl_module: pl.LightningModule,
+        epoch: int,
+        optimizer: Optimizer,
+        opt_idx: int,
+    ):
+        if epoch == self.milestones[0]:
+            # unfreeze 5 last layers
+            self.unfreeze_and_add_param_group(
+                modules=pl_module.feature_extractor[-5:],
+                optimizer=optimizer,
+                train_bn=self.train_bn,
+            )
+
+        elif epoch == self.milestones[1]:
+            # unfreeze remaing layers
+            self.unfreeze_and_add_param_group(
+                modules=pl_module.feature_extractor[:-5],
+                optimizer=optimizer,
+                train_bn=self.train_bn,
+            )
 
 
 class FTRDataModule(pl.LightningDataModule):
@@ -66,13 +98,12 @@ class FTRModel(pl.LightningModule):
         self.dim = input_shape
         self.num_classes = num_classes
 
-        self.feature_extractor = models.resnet101(pretrained=True)
-        self.feature_extractor.eval()  # layers are frozen by using eval()
-        for param in self.feature_extractor.parameters():  # freeze params
-            param.requires_grad = False
+        model_func = getattr(models, "resnet101")
+        backbone = model_func(pretrained=True)
+        _layers = list(backbone.children())[:-1]
+        self.feature_extractor = nn.Sequential(*_layers)
 
         n_sizes = self._get_conv_output(input_shape)
-
         self.classifier = nn.Linear(n_sizes, num_classes)
 
     # returns the size of the output tensor going into the Linear layer from the conv block
@@ -157,14 +188,14 @@ class FTRModel(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    datamodule = FTRDataModule(batch_size=1024, data_dir="data/v1")
+    datamodule = FTRDataModule(batch_size=128, data_dir="data/v3")
     datamodule.setup()
 
     # wandb.login()
-    # wandb.init(project="feel-the-cnn-rhythm", entity="sharad30")
-    # wandb_logger = WandbLogger(project="ftr-lightning", job_type="train")
+    wandb.init(project="feel-the-cnn-rhythm", entity="sharad30")
+    wandb_logger = WandbLogger(project="ftr-lightning", job_type="train")
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", patience=3, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(monitor="val_loss", patience=12, verbose=False, mode="min")
 
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",
@@ -174,13 +205,13 @@ if __name__ == "__main__":
         mode="min",
     )
 
-    model = FTRModel((3, 64, 64), 2)
+    model = FTRModel((3, 128, 128), 2)
     trainer = pl.Trainer(
         max_epochs=20,
         progress_bar_refresh_rate=20,
         gpus=1,
         # logger=wandb_logger,
-        callbacks=[early_stop_callback, checkpoint_callback],
+        callbacks=[early_stop_callback, checkpoint_callback, MilestonesFinetuning()],
     )
 
     trainer.fit(model, datamodule)

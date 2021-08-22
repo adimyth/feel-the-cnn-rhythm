@@ -1,5 +1,8 @@
 data/
 wandb/
+lightning_logs/
+experiments/
+.tabnine.model
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

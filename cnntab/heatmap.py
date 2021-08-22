@@ -15,6 +15,8 @@ class Heatmap(BaseModel):
 
     def create_heatmap(self):
         fig, _ = plt.subplots(figsize=(10, 5))
-        _ = sns.heatmap(self.data, linewidths=1, cmap="Greens", linecolor="white", cbar=False)
+        _ = sns.heatmap(
+            self.data, linewidths=1, cmap="Greens", linecolor="white", cbar=False
+        )
         plt.axis("off")
         return fig
