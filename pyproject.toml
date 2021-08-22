@@ -4,6 +4,10 @@ version = "0.1.0"
 description = "Functions to train CNNs on tabular data"
 authors = ["adimyth <mishraaditya6991@gmail.com>", "sharad30 <sharad30.ss@gmail.com>", "soumendra <soumendra@gmail.com>"]
 
+[[tool.poetry.source]]
+name = "torch_rep"
+url = "https://eternalphane.github.io/pytorch-pypi"
+
 [tool.poetry.dependencies]
 python = "^3.8"
 pydantic = "^1.8.2"

@@ -8,7 +8,7 @@ RUN apt update && apt install -y --no-install-recommends \
     python3-pip \
     python3-setuptools
 RUN pip3 -q install pip --upgrade
-RUN pip3 install numpy pandas jupyter pydantic tqdm click
+RUN pip3 install numpy pandas jupyter pydantic tqdm click loguru
 RUN pip3 install \
     torch==1.9.0+cu111 \
     torchvision==0.10.0+cu111 \
@@ -17,12 +17,13 @@ RUN pip3 install \
 RUN pip3 install \
     pytorch-lightning lightning-flash\
     fastai \
+    kornia albumentations\
     tensorboardX \
-    poetry \
     streamlit \
     seaborn \
     scikit-learn \
-    wandb
+    wandb \
+    data-science-types
 
 FROM pytorch-base
 RUN pip3 install \

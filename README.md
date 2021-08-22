@@ -10,6 +10,22 @@ If you'd prefer that conda's base environment not be activated on startup,
 conda config --set auto_activate_base false
 ```
 
+# Installing torch and related packages (don't do this)
+
+* Install [`light-the-torch`](https://github.com/pmeier/light-the-torch/issues/32) WITH pip: `poetry run pip install light-the-torch`
+* `poetry run ltt install torch`
+* `poetry run pip install torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html`
+* For future follow-up
+  * https://stackoverflow.com/questions/64871630/how-to-convert-pip-install-to-poetry-file
+  * https://github.com/python-poetry/poetry/issues/4124
+  * https://github.com/pmeier/light-the-torch
+  * https://stackoverflow.com/questions/59158044/poetry-and-pytorch
+  * https://github.com/python-poetry/poetry/issues/1616
+
+/home/soumendra/project-zoo/feel-the-cnn-rhythm/.venv/lib/python3.8/site-packages/pytorch_lightning/core/datamodule.py:423: LightningDeprecationWarning: DataModule.setup has already been called, so it will not be called again. In v1.6 this behavior will change to always call DataModule.setup.
+
+pytorch_lightning.utilities.exceptions.MisconfigurationException: `.test(ckpt_path="best")` is set but `ModelCheckpoint` is not configured to save the best model.
+
 # Installing docker-compose
 
 * https://docs.docker.com/compose/install/
