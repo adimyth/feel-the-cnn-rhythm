@@ -1,7 +1,7 @@
 import random
 from multiprocessing import Pool
 from pathlib import Path
-
+import hashlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
@@ -16,7 +16,7 @@ def df_to_heatmap(
 ):
     if idx is None:
         diag = data.iloc[min_offset:, :]
-        idx = diag[diag.worked == True].index[offset]
+        idx = diag[diag.worked].index[offset]
     timestamp = data.iloc[idx, :].timestamp
     diag = data.iloc[idx - min_offset : idx, :]
     label = diag.worked.sum()
@@ -25,18 +25,16 @@ def df_to_heatmap(
 
 
 def create_heatmap(subset):
-        fig, _ = plt.subplots(figsize=(10, 5))
-        _ = sns.heatmap(
-            subset, linewidths=1, cmap="Greens", linecolor="white", cbar=False
-        )
-        plt.axis("off")
-        return fig
+    fig, _ = plt.subplots(figsize=(10, 5))
+    _ = sns.heatmap(subset, linewidths=1, cmap="Greens", linecolor="white", cbar=False)
+    plt.axis("off")
+    return fig
 
 
 def generate_parallel_heatmaps(df):
     df = df[1]
     df = df.reset_index(drop=True)
-    for idx in df[df.worked == True].index:
+    for idx in df[df.worked].index:
         if idx <= 120:
             continue
         subset, label, timestamp, _ = df_to_heatmap(df, idx=idx)
@@ -44,10 +42,13 @@ def generate_parallel_heatmaps(df):
             continue
 
         h = create_heatmap(subset)
+        pathcomp_1 = str(df.worker.unique()[0])
+        pathcomp_2 = str(timestamp.timestamp())
+        path_str = f"{pathcomp_1}_{pathcomp_2}"
+        path_hash = hashlib.md5(path_str.encode("utf-8")).hexdigest()
         h.savefig(
-            Path("data/heatmaps")
-            / f"{label}_{df.worker.unique()[0]}_{timestamp.strftime('%Y_%m_%d_%H_%M_%S')}.png",
-            bbox_inches='tight'
+            Path("data/heatmaps") / f"{label}_{path_hash}.png",
+            bbox_inches="tight",
         )
         plt.close(h)
 
