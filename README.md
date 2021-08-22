@@ -45,4 +45,15 @@ docker-compose --version
 * [lightning-flash](https://lightning-flash.readthedocs.io/en/latest/quickstart.html)
 * [dlint](https://github.com/duo-labs/dlint)
 * [pytorch binaries](https://download.pytorch.org/whl/torch_stable.html)
-  
+
+
+
+# Experiments
+
+1. Does this approach work at all?: Build a basic model to count the number of rectangles in images
+    - This can serve as the pre-trained model
+2. Create plots with reduced dimensionality
+    - PCA
+    - t-SNE
+    - UMAP
+3. Self-supervised pre-training
