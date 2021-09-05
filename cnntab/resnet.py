@@ -7,6 +7,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks.finetuning import BaseFinetuning
 from pytorch_lightning.loggers import WandbLogger
+
 # from pytorch_lightning.metrics.functional import accuracy
 from torch import nn
 from torch.optim.optimizer import Optimizer
@@ -73,17 +74,35 @@ class FTRDataModule(pl.LightningDataModule):
         num_valid = int(0.15 * len(ftr_dataset))
         num_test = len(ftr_dataset) - num_train - num_valid
 
-        self.train, self.val, self.test = random_split(
-            ftr_dataset, [num_train, num_valid, num_test]
-        )
+        from collections import Counter
+
+        self.train, self.val, self.test = random_split(ftr_dataset, [num_train, num_valid, num_test])
+        print("################################################################")
+        from tqdm import tqdm
+
+        out = {"0": 0, "1": 0}
+        for sample, target in tqdm(self.train):
+            out[str(target)] += 1
+        out_val = {"0": 0, "1": 0}
+        for sample, target in tqdm(self.val):
+            out_val[str(target)] += 1
+        out_test = {"0": 0, "1": 0}
+        for sample, target in tqdm(self.test):
+            out_test[str(target)] += 1
+
+        print(f"train: 0 - {out['0']/(out['0'] + out['1'])}")
+        print(f"train: 1 - {out['1']/(out['0'] + out['1'])}")
+        print(f"val: 0 - {out_val['0']/(out_val['0'] + out_val['1'])}")
+        print(f"val: 1 - {out_val['1']/(out_val['0'] + out_val['1'])}")
+        print(f"test: 0 - {out_test['0']/(out_test['0'] + out_test['1'])}")
+        print(f"test: 1 - {out_test['1']/(out_test['0'] + out_test['1'])}")
+        print("################################################################")
         self.train.dataset.transform = self.transform
         self.val.dataset.transform = self.transform
         self.test.dataset.transform = self.transform
 
     def train_dataloader(self):
-        return DataLoader(
-            self.train, batch_size=self.batch_size, shuffle=True, num_workers=16
-        )
+        return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, num_workers=16)
 
     def val_dataloader(self):
         return DataLoader(self.val, batch_size=self.batch_size, num_workers=16)
@@ -144,12 +163,8 @@ class FTRModel(pl.LightningModule):
         recall_score_1 = recall(preds, y, ignore_index=0)
         self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
         self.log("train_acc", acc, on_step=True, on_epoch=True, logger=True)
-        self.log(
-            "train_recall_0", recall_score_0, on_step=True, on_epoch=True, logger=True
-        )
-        self.log(
-            "train_recall_1", recall_score_1, on_step=True, on_epoch=True, logger=True
-        )
+        self.log("train_recall_0", recall_score_0, on_step=True, on_epoch=True, logger=True)
+        self.log("train_recall_1", recall_score_1, on_step=True, on_epoch=True, logger=True)
 
         return loss
 
@@ -194,10 +209,10 @@ class FTRModel(pl.LightningModule):
         return optimizer
 
     def custom_histogram_adder(self):
-        for name,params in self.named_parameters():
-            self.logger.experiment.add_histogram(name,params,self.current_epoch)
-            
-    def training_epoch_end(self):
+        for name, params in self.named_parameters():
+            self.logger.experiment.add_histogram(name, params, self.current_epoch)
+
+    def training_epoch_end(self, x):
         # avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
         self.custom_histogram_adder()
         # epoch_dictionary={
@@ -206,17 +221,15 @@ class FTRModel(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    datamodule = FTRDataModule(batch_size=128, data_dir="data/v3")
+    datamodule = FTRDataModule(batch_size=128, data_dir="data/generation_0/v4")
     datamodule.setup()
 
     # wandb.login()
     wandb.init(project="feel-the-cnn-rhythm", entity="sharad30")
     wandb_logger = WandbLogger(project="ftr-lightning", job_type="train")
 
-    logger = TensorBoardLogger('tb_logs')
-    early_stop_callback = EarlyStopping(
-        monitor="val_loss", patience=12, verbose=False, mode="min"
-    )
+    logger = TensorBoardLogger("tb_logs")
+    early_stop_callback = EarlyStopping(monitor="val_loss", patience=12, verbose=False, mode="min")
 
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",
