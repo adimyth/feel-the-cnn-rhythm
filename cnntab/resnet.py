@@ -2,11 +2,11 @@ import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 import torchvision.models as models  # type:ignore
+import wandb  # type:ignore
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks.finetuning import BaseFinetuning
 from pytorch_lightning.loggers import WandbLogger
-
 # from pytorch_lightning.metrics.functional import accuracy
 from torch import nn
 from torch.optim.optimizer import Optimizer
@@ -15,8 +15,7 @@ from torchmetrics.functional import accuracy, recall
 from torchvision import transforms
 from torchvision.datasets import ImageFolder  # type:ignore
 from torchvision.ops import sigmoid_focal_loss  # type:ignore
-
-import wandb  # type:ignore
+from pytorch_lightning.loggers import TensorBoardLogger
 
 
 class MilestonesFinetuning(BaseFinetuning):
@@ -74,13 +73,17 @@ class FTRDataModule(pl.LightningDataModule):
         num_valid = int(0.15 * len(ftr_dataset))
         num_test = len(ftr_dataset) - num_train - num_valid
 
-        self.train, self.val, self.test = random_split(ftr_dataset, [num_train, num_valid, num_test])
+        self.train, self.val, self.test = random_split(
+            ftr_dataset, [num_train, num_valid, num_test]
+        )
         self.train.dataset.transform = self.transform
         self.val.dataset.transform = self.transform
         self.test.dataset.transform = self.transform
 
     def train_dataloader(self):
-        return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, num_workers=16)
+        return DataLoader(
+            self.train, batch_size=self.batch_size, shuffle=True, num_workers=16
+        )
 
     def val_dataloader(self):
         return DataLoader(self.val, batch_size=self.batch_size, num_workers=16)
@@ -141,8 +144,12 @@ class FTRModel(pl.LightningModule):
         recall_score_1 = recall(preds, y, ignore_index=0)
         self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
         self.log("train_acc", acc, on_step=True, on_epoch=True, logger=True)
-        self.log("train_recall_0", recall_score_0, on_step=True, on_epoch=True, logger=True)
-        self.log("train_recall_1", recall_score_1, on_step=True, on_epoch=True, logger=True)
+        self.log(
+            "train_recall_0", recall_score_0, on_step=True, on_epoch=True, logger=True
+        )
+        self.log(
+            "train_recall_1", recall_score_1, on_step=True, on_epoch=True, logger=True
+        )
 
         return loss
 
@@ -186,6 +193,17 @@ class FTRModel(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
         return optimizer
 
+    def custom_histogram_adder(self):
+        for name,params in self.named_parameters():
+            self.logger.experiment.add_histogram(name,params,self.current_epoch)
+            
+    def training_epoch_end(self):
+        # avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
+        self.custom_histogram_adder()
+        # epoch_dictionary={
+        #     'loss': avg_loss}
+        # return epoch_dictionary
+
 
 if __name__ == "__main__":
     datamodule = FTRDataModule(batch_size=128, data_dir="data/v3")
@@ -195,7 +213,10 @@ if __name__ == "__main__":
     wandb.init(project="feel-the-cnn-rhythm", entity="sharad30")
     wandb_logger = WandbLogger(project="ftr-lightning", job_type="train")
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", patience=12, verbose=False, mode="min")
+    logger = TensorBoardLogger('tb_logs')
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", patience=12, verbose=False, mode="min"
+    )
 
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",
@@ -210,7 +231,7 @@ if __name__ == "__main__":
         max_epochs=20,
         progress_bar_refresh_rate=20,
         gpus=1,
-        # logger=wandb_logger,
+        logger=logger,
         callbacks=[early_stop_callback, checkpoint_callback, MilestonesFinetuning()],
     )
 

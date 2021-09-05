@@ -1,11 +1,11 @@
 import random
 from multiprocessing import Pool
 from pathlib import Path
-import hashlib
-import matplotlib.pyplot as plt
-import pandas as pd
-from tqdm import tqdm
-import seaborn as sns
+
+import matplotlib.pyplot as plt  # type: ignore
+import pandas as pd  # type: ignore
+import seaborn as sns   # type: ignore
+from tqdm import tqdm   # type: ignore
 
 
 def df_to_heatmap(
@@ -47,7 +47,8 @@ def generate_parallel_heatmaps(df):
         path_str = f"{pathcomp_1}_{pathcomp_2}"
         path_hash = hashlib.md5(path_str.encode("utf-8")).hexdigest()
         h.savefig(
-            Path("data/heatmaps") / f"{label}_{path_hash}.png",
+            Path("data/heatmaps")
+            / f"{label}_{df.worker.unique()[0]}_{timestamp.strftime('%Y_%m_%d_%H_%M_%S')}.png",
             bbox_inches="tight",
         )
         plt.close(h)
